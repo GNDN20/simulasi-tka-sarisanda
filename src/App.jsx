@@ -46,10 +46,14 @@ import {
 
 const SCHOOL_NAME = 'SDN JOGOSARI I PANDAAN';
 
+// Kata sandi untuk masuk ke Portal Guru & Admin (ubah sesuai kebutuhan sekolah)
+const TEACHER_PASSWORD = 'guru123';
+const ADMIN_PASSWORD = 'admin123';
+
 // Opsional: Isi URL & Anon Key di sini jika ingin semua Chromebook siswa
 // otomatis terhubung ke Supabase tanpa perlu pengaturan manual di browser.
-const DEFAULT_SUPABASE_URL = 'https://dcrslhcaqatmxbbuptyv.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjcnNsaGNhcWF0bXhiYnVwdHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU3MjM5MjMsImV4cCI6MjExMTI5OTkyM30.skqwTcJ4Xf9w1kkp59d6O6XgY-XXn5vbTk7MNa_lKZA';
+const DEFAULT_SUPABASE_URL = '';
+const DEFAULT_SUPABASE_ANON_KEY = '';
 
 const STORAGE_KEYS = {
   packages: 'tka_jogosari_packages_v1',
@@ -1043,12 +1047,13 @@ export default function App() {
 
   const handleTeacherLogin = (e) => {
     e.preventDefault();
-    if (teacherPass.trim() === 'guru123' || teacherPass.trim() === 'admin123') {
+    const entered = teacherPass.trim();
+    if (entered === TEACHER_PASSWORD || entered === ADMIN_PASSWORD) {
       setTeacherLoginErr('');
       setPortalMode('TEACHER_DASHBOARD');
       showToast('Berhasil masuk ke Portal Guru!');
     } else {
-      setTeacherLoginErr('Kata sandi salah. Gunakan "guru123" untuk masuk.');
+      setTeacherLoginErr('Kata sandi salah. Silakan periksa kembali kata sandi Anda.');
     }
   };
 
@@ -1548,17 +1553,6 @@ export default function App() {
                   <AlertCircle className="w-4 h-4" /> {teacherLoginErr}
                 </p>
               )}
-            </div>
-
-            <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600">
-              <span>Kata sandi demo: <strong className="font-mono text-slate-900">guru123</strong></span>
-              <button
-                type="button"
-                onClick={() => setTeacherPass('guru123')}
-                className="text-indigo-600 font-bold hover:underline"
-              >
-                Isi Otomatis
-              </button>
             </div>
 
             <button
@@ -2760,7 +2754,6 @@ export default function App() {
   // VIEW C: PORTAL SISWA — LAYAR 1 (MASUK TOKEN)
   // ==========================================================================
   if (step === 'TOKEN') {
-    const activePackages = packages.filter((p) => p.isActive);
     return (
       <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-indigo-50 flex flex-col items-center justify-center p-4 relative">
         <ToastBanner />
@@ -2797,7 +2790,7 @@ export default function App() {
                       setTokenInput(e.target.value.toUpperCase());
                       setTokenError('');
                     }}
-                    placeholder="Contoh: MTK6SD1 atau BIN6SD1"
+                    placeholder="Masukkan token dari guru..."
                     className="w-full pl-11 pr-4 py-3.5 text-lg font-bold tracking-widest uppercase border-2 border-slate-200 rounded-xl focus:border-sky-500 focus:ring-4 focus:ring-sky-100 outline-none transition"
                   />
                 </div>
@@ -2817,41 +2810,6 @@ export default function App() {
                 <ChevronRight className="w-5 h-5" />
               </button>
             </form>
-
-            <div className="mt-6 p-4 bg-amber-50 border border-amber-200/80 rounded-2xl">
-              <div className="flex items-start gap-3">
-                <Sparkles className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="text-sm text-amber-900 w-full">
-                  <p className="font-semibold">Token Sesi Aktif Saat Ini</p>
-                  <p className="text-amber-800/90 mt-0.5 text-xs">
-                    Klik salah satu mata pelajaran di bawah untuk mengisi token otomatis:
-                  </p>
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {activePackages.map((pkg) => {
-                      const isMtk = pkg.subject === 'Matematika';
-                      return (
-                        <button
-                          key={pkg.id}
-                          type="button"
-                          onClick={() => {
-                            setTokenInput(pkg.token);
-                            setTokenError('');
-                          }}
-                          className={`text-xs font-bold px-3 py-2 rounded-xl border transition flex items-center justify-center gap-1.5 ${
-                            isMtk
-                              ? 'text-indigo-800 bg-indigo-100 hover:bg-indigo-200 border-indigo-200'
-                              : 'text-teal-800 bg-teal-100 hover:bg-teal-200 border-teal-200'
-                          }`}
-                        >
-                          {isMtk ? <Calculator className="w-3.5 h-3.5 shrink-0" /> : <BookOpen className="w-3.5 h-3.5 shrink-0" />}
-                          <span className="truncate">{pkg.token}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
         <p className="text-xs text-slate-400 mt-6 text-center">
@@ -2948,20 +2906,10 @@ export default function App() {
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setStudent({ name: 'Raka Pratama', className: '6A', birthDate: '2014-06-18' });
-                  setIdentityError('');
-                }}
-                className="sm:w-auto px-4 py-3 text-sm font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-xl transition"
-              >
-                Isi Data Contoh
-              </button>
+            <div className="pt-1">
               <button
                 type="submit"
-                className="flex-1 py-3.5 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2"
               >
                 Mulai Ujian Sekarang
                 <ChevronRight className="w-5 h-5" />
@@ -3547,14 +3495,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex flex-wrap justify-between items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setPortalMode('TEACHER_LOGIN')}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center gap-1.5"
-              >
-                <ShieldCheck className="w-4 h-4" /> Cek Rekap di Portal Guru
-              </button>
+            <div className="flex justify-end items-center pt-2">
               <button
                 type="button"
                 onClick={handleRestartStudent}
