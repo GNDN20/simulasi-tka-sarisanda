@@ -52,8 +52,8 @@ const ADMIN_PASSWORD = 'admin123';
 
 // Opsional: Isi URL & Anon Key di sini jika ingin semua Chromebook siswa
 // otomatis terhubung ke Supabase tanpa perlu pengaturan manual di browser.
-const DEFAULT_SUPABASE_URL = '';
-const DEFAULT_SUPABASE_ANON_KEY = '';
+const DEFAULT_SUPABASE_URL = 'https://dcrslhcaqatmxbbuptyv.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjcnNsaGNhcWF0bXhiYnVwdHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU3MjM5MjMsImV4cCI6MjExMTI5OTkyM30.skqwTcJ4Xf9w1kkp59d6O6XgY-XXn5vbTk7MNa_lKZA';
 
 const STORAGE_KEYS = {
   packages: 'tka_jogosari_packages_v1',
