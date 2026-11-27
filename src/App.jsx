@@ -636,25 +636,42 @@ export default function App() {
   }, []);
 
   // --- STATE KONEKSI SUPABASE (OPSIONAL UNTUK DEPLOY PRODUKSI) ---
-  const [supabaseConfig, setSupabaseConfig] = useState({
-    url: '',
-    anonKey: '',
-    connected: false,
+  const [supabaseConfig, setSupabaseConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tka_supabase_config');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // Abaikan jika localStorage tidak tersedia
+    }
+    return { url: '', anonKey: '', connected: false };
   });
+  const [supabaseTestError, setSupabaseTestError] = useState('');
+
+  // Helper header API Supabase (mendukung Publishable Key sb_publishable_... & Legacy JWT eyJ...)
+  const buildSupabaseHeaders = useCallback((apiKey, extra = {}) => {
+    const cleanKey = (apiKey || '').trim();
+    const headers = {
+      apikey: cleanKey,
+      ...extra,
+    };
+    if (cleanKey.startsWith('eyJ')) {
+      headers.Authorization = `Bearer ${cleanKey}`;
+    }
+    return headers;
+  }, []);
 
   // Helper kirim hasil ujian ke Supabase jika sudah dihubungkan
   const pushSessionToSupabase = useCallback(
     async (sessionPayload) => {
       if (!supabaseConfig.connected || !supabaseConfig.url || !supabaseConfig.anonKey) return;
       try {
-        await fetch(`${supabaseConfig.url.replace(/\/$/, '')}/rest/v1/student_sessions`, {
+        const cleanUrl = supabaseConfig.url.trim().replace(/\/$/, '');
+        await fetch(`${cleanUrl}/rest/v1/student_sessions`, {
           method: 'POST',
-          headers: {
-            apikey: supabaseConfig.anonKey,
-            Authorization: `Bearer ${supabaseConfig.anonKey}`,
+          headers: buildSupabaseHeaders(supabaseConfig.anonKey, {
             'Content-Type': 'application/json',
             Prefer: 'return=minimal',
-          },
+          }),
           body: JSON.stringify({
             student_name: sessionPayload.studentName,
             student_class: sessionPayload.studentClass,
@@ -667,7 +684,7 @@ export default function App() {
         // Tetap aman tersimpan di sesi lokal aplikasi
       }
     },
-    [supabaseConfig]
+    [supabaseConfig, buildSupabaseHeaders]
   );
 
   // ==========================================================================
@@ -2081,46 +2098,75 @@ export default function App() {
                   <input
                     type="url"
                     value={supabaseConfig.url}
-                    onChange={(e) => setSupabaseConfig({ ...supabaseConfig, url: e.target.value, connected: false })}
+                    onChange={(e) => {
+                      setSupabaseConfig({ ...supabaseConfig, url: e.target.value, connected: false });
+                      setSupabaseTestError('');
+                    }}
                     placeholder="https://xxxxxxxxxxxx.supabase.co"
                     className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 text-sm outline-none focus:border-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1.5">Supabase Anon Public Key</label>
+                  <label className="block text-xs font-bold uppercase text-slate-600 mb-1.5">
+                    Supabase Publishable / Anon Public Key
+                  </label>
                   <input
                     type="password"
                     value={supabaseConfig.anonKey}
-                    onChange={(e) => setSupabaseConfig({ ...supabaseConfig, anonKey: e.target.value, connected: false })}
-                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                    onChange={(e) => {
+                      setSupabaseConfig({ ...supabaseConfig, anonKey: e.target.value, connected: false });
+                      setSupabaseTestError('');
+                    }}
+                    placeholder="sb_publishable_... atau eyJhbGciOiJIUzI1NiIs..."
                     className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 text-sm outline-none focus:border-emerald-500"
                   />
                 </div>
 
+                {supabaseConfig.connected && (
+                  <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                    <span>Koneksi aktif & tersimpan ke: {supabaseConfig.url}</span>
+                  </div>
+                )}
+
+                {supabaseTestError && (
+                  <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-semibold flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                    <span>{supabaseTestError}</span>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={async () => {
-                    if (!supabaseConfig.url || !supabaseConfig.anonKey) {
-                      showToast('Isi URL dan Anon Key Supabase terlebih dahulu.', 'error');
+                    const cleanUrl = supabaseConfig.url.trim().replace(/\/$/, '');
+                    const cleanKey = supabaseConfig.anonKey.trim();
+                    setSupabaseTestError('');
+                    if (!cleanUrl || !cleanKey) {
+                      showToast('Isi URL dan Key Supabase terlebih dahulu.', 'error');
                       return;
                     }
                     try {
-                      const res = await fetch(
-                        `${supabaseConfig.url.replace(/\/$/, '')}/rest/v1/exam_packages?select=id&limit=1`,
-                        {
-                          headers: {
-                            apikey: supabaseConfig.anonKey,
-                            Authorization: `Bearer ${supabaseConfig.anonKey}`,
-                          },
-                        }
-                      );
+                      const res = await fetch(`${cleanUrl}/rest/v1/exam_packages?select=id&limit=1`, {
+                        headers: buildSupabaseHeaders(cleanKey),
+                      });
                       if (res.ok) {
-                        setSupabaseConfig((prev) => ({ ...prev, connected: true }));
+                        const nextConfig = { url: cleanUrl, anonKey: cleanKey, connected: true };
+                        setSupabaseConfig(nextConfig);
+                        try {
+                          localStorage.setItem('tka_supabase_config', JSON.stringify(nextConfig));
+                        } catch {
+                          // Abaikan jika penyimpanan dibatasi
+                        }
                         showToast('Berhasil terhubung ke database Supabase!');
                       } else {
-                        showToast('Koneksi ditolak. Pastikan skrip SQL tabel sudah dijalankan di Supabase.', 'error');
+                        const errData = await res.json().catch(() => ({}));
+                        const detail = errData.message || errData.error_description || res.statusText || 'Akses ditolak';
+                        setSupabaseTestError(`Kode ${res.status}: ${detail}`);
+                        showToast(`Koneksi ditolak (${res.status}). Lihat detail di bawah tombol.`, 'error');
                       }
                     } catch {
+                      setSupabaseTestError('Gagal menghubungi server. Pastikan Project URL diawali https:// dan berakhiran .supabase.co');
                       showToast('Gagal menghubungi server Supabase. Cek kembali URL proyek.', 'error');
                     }
                   }}
