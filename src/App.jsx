@@ -33,20 +33,52 @@ import {
   BarChart3,
   Users,
   FolderKanban,
-  Settings,
   LogOut,
   Search,
   Database,
-  CheckSquare,
   RefreshCw,
   FileSpreadsheet
 } from 'lucide-react';
 
 // ============================================================================
-// 1. DATA AWAL (PAKET TERPISAH PER MATA UJI, STIMULUS, SOAL, & SAMPEL NILAI)
+// 1. KONFIGURASI & DATA AWAL
 // ============================================================================
 
 const SCHOOL_NAME = 'SDN JOGOSARI I PANDAAN';
+
+// Opsional: Isi URL & Anon Key di sini jika ingin semua Chromebook siswa
+// otomatis terhubung ke Supabase tanpa perlu pengaturan manual di browser.
+const DEFAULT_SUPABASE_URL = 'https://dcrslhcaqatmxbbuptyv.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjcnNsaGNhcWF0bXhiYnVwdHl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU3MjM5MjMsImV4cCI6MjExMTI5OTkyM30.skqwTcJ4Xf9w1kkp59d6O6XgY-XXn5vbTk7MNa_lKZA';
+
+const STORAGE_KEYS = {
+  packages: 'tka_jogosari_packages_v1',
+  stimuli: 'tka_jogosari_stimuli_v1',
+  questions: 'tka_jogosari_questions_v1',
+  sessions: 'tka_jogosari_sessions_v1',
+  supabase: 'tka_supabase_config',
+};
+
+const loadLocalJson = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // Abaikan jika localStorage tidak tersedia
+  }
+  return typeof fallback === 'function' ? fallback() : fallback;
+};
+
+const saveLocalJson = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Abaikan jika kuota penyimpanan penuh
+  }
+};
 
 const INITIAL_PACKAGES = [
   {
@@ -352,13 +384,11 @@ function isQuestionAnswered(question, userAnswer) {
   return false;
 }
 
-// Helper membuat data sampel siswa agar Portal Guru langsung menampilkan Rekap & Analisis Butir Soal
 function buildSeedSessions(questions) {
   const mtkQs = questions.filter((q) => q.packageId === 'pkg-tka-mtk-01');
   const binQs = questions.filter((q) => q.packageId === 'pkg-tka-bin-01');
 
   const rawSamples = [
-    // Sampel Matematika (8 siswa untuk demonstrasi Kelompok Atas & Bawah)
     {
       id: 'sess-1',
       packageId: 'pkg-tka-mtk-01',
@@ -416,63 +446,6 @@ function buildSeedSessions(questions) {
       },
     },
     {
-      id: 'sess-5',
-      packageId: 'pkg-tka-mtk-01',
-      studentName: 'Eka Safitri',
-      studentClass: '6C',
-      birthDate: '2014-04-09',
-      finishedAt: '2026-11-26 08:30',
-      answers: {
-        'q-mtk-1': 'C',
-        'q-mtk-2': ['1', '3', '4'],
-        'q-mtk-3': { p1: true, p2: true, p3: false },
-        'q-mtk-4': { L1: 'R1', L2: 'R2', L3: 'R3' },
-      },
-    },
-    {
-      id: 'sess-6',
-      packageId: 'pkg-tka-mtk-01',
-      studentName: 'Fajar Hidayat',
-      studentClass: '6C',
-      birthDate: '2014-07-15',
-      finishedAt: '2026-11-26 08:30',
-      answers: {
-        'q-mtk-1': 'A',
-        'q-mtk-2': ['2', '4'],
-        'q-mtk-3': { p1: true, p2: true, p3: false },
-        'q-mtk-4': { L1: 'R2', L2: 'R1', L3: 'R3' },
-      },
-    },
-    {
-      id: 'sess-7',
-      packageId: 'pkg-tka-mtk-01',
-      studentName: 'Gita Purnama',
-      studentClass: '6A',
-      birthDate: '2014-01-30',
-      finishedAt: '2026-11-26 08:24',
-      answers: {
-        'q-mtk-1': 'B',
-        'q-mtk-2': ['1', '3'],
-        'q-mtk-3': { p1: true, p2: false, p3: true },
-        'q-mtk-4': { L1: 'R3', L2: 'R2', L3: 'R1' },
-      },
-    },
-    {
-      id: 'sess-8',
-      packageId: 'pkg-tka-mtk-01',
-      studentName: 'Hendra Wijaya',
-      studentClass: '6D',
-      birthDate: '2014-09-14',
-      finishedAt: '2026-11-26 08:29',
-      answers: {
-        'q-mtk-1': 'C',
-        'q-mtk-2': ['2'],
-        'q-mtk-3': { p1: false, p2: true, p3: false },
-        'q-mtk-4': { L1: 'R1', L2: 'R3', L3: 'R2' },
-      },
-    },
-    // Sampel Bahasa Indonesia (6 siswa)
-    {
       id: 'sess-9',
       packageId: 'pkg-tka-bin-01',
       studentName: 'Alya Putri Ramadhani',
@@ -498,34 +471,6 @@ function buildSeedSessions(questions) {
         'q-bin-2': ['1', '2'],
         'q-bin-3': { p1: false, p2: true, p3: true },
         'q-bin-4': { L1: 'R2', L2: 'R3', L3: 'R1' },
-      },
-    },
-    {
-      id: 'sess-11',
-      packageId: 'pkg-tka-bin-01',
-      studentName: 'Citra Dewi Lestari',
-      studentClass: '6B',
-      birthDate: '2014-08-03',
-      finishedAt: '2026-11-26 10:20',
-      answers: {
-        'q-bin-1': 'C',
-        'q-bin-2': ['1', '2', '3'],
-        'q-bin-3': { p1: false, p2: true, p3: true },
-        'q-bin-4': { L1: 'R2', L2: 'R1', L3: 'R3' },
-      },
-    },
-    {
-      id: 'sess-12',
-      packageId: 'pkg-tka-bin-01',
-      studentName: 'Dimas Arya Nugroho',
-      studentClass: '6B',
-      birthDate: '2014-11-21',
-      finishedAt: '2026-11-26 10:22',
-      answers: {
-        'q-bin-1': 'A',
-        'q-bin-2': ['1', '3'],
-        'q-bin-3': { p1: true, p2: true, p3: true },
-        'q-bin-4': { L1: 'R1', L2: 'R2', L3: 'R3' },
       },
     },
   ];
@@ -619,78 +564,273 @@ const HarvestBarChartSVG = () => {
 // ============================================================================
 
 export default function App() {
-  // --- STATE DATA UTAMA (Terintegrasi antara Siswa & Guru) ---
-  const [packages, setPackages] = useState(INITIAL_PACKAGES);
-  const [stimuli, setStimuli] = useState(INITIAL_STIMULI);
-  const [questions, setQuestions] = useState(INITIAL_QUESTIONS);
-  const [sessions, setSessions] = useState(() => buildSeedSessions(INITIAL_QUESTIONS));
+  // --- STATE DATA UTAMA (Tersimpan Otomatis di localStorage + Sinkron Supabase) ---
+  const [packages, setPackages] = useState(() => loadLocalJson(STORAGE_KEYS.packages, INITIAL_PACKAGES));
+  const [stimuli, setStimuli] = useState(() => loadLocalJson(STORAGE_KEYS.stimuli, INITIAL_STIMULI));
+  const [questions, setQuestions] = useState(() => loadLocalJson(STORAGE_KEYS.questions, INITIAL_QUESTIONS));
+  const [sessions, setSessions] = useState(() =>
+    loadLocalJson(STORAGE_KEYS.sessions, () => buildSeedSessions(INITIAL_QUESTIONS))
+  );
 
-  // --- MODE PORTAL: 'STUDENT' | 'TEACHER_LOGIN' | 'TEACHER_DASHBOARD' ---
+  // Auto-save setiap perubahan ke localStorage agar tidak hilang saat refresh
+  useEffect(() => saveLocalJson(STORAGE_KEYS.packages, packages), [packages]);
+  useEffect(() => saveLocalJson(STORAGE_KEYS.stimuli, stimuli), [stimuli]);
+  useEffect(() => saveLocalJson(STORAGE_KEYS.questions, questions), [questions]);
+  useEffect(() => saveLocalJson(STORAGE_KEYS.sessions, sessions), [sessions]);
+
+  // --- MODE PORTAL ---
   const [portalMode, setPortalMode] = useState('STUDENT');
+  const [adminPkgId, setAdminPkgId] = useState(() => packages[0]?.id || INITIAL_PACKAGES[0].id);
 
-  // --- NOTIFIKASI TOAST GLOBAL (Pengganti alert) ---
+  // --- TOAST NOTIFIKASI ---
   const [toast, setToast] = useState(null);
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3500);
+    setTimeout(() => setToast(null), 4000);
   }, []);
 
-  // --- STATE KONEKSI SUPABASE (OPSIONAL UNTUK DEPLOY PRODUKSI) ---
+  // --- STATE KONEKSI SUPABASE ---
   const [supabaseConfig, setSupabaseConfig] = useState(() => {
     try {
-      const saved = localStorage.getItem('tka_supabase_config');
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem(STORAGE_KEYS.supabase);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.url && parsed.anonKey) return parsed;
+      }
     } catch {
-      // Abaikan jika localStorage tidak tersedia
+      // Abaikan
+    }
+    if (DEFAULT_SUPABASE_URL && DEFAULT_SUPABASE_ANON_KEY) {
+      return { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY, connected: true };
     }
     return { url: '', anonKey: '', connected: false };
   });
   const [supabaseTestError, setSupabaseTestError] = useState('');
+  const [cloudSyncStatus, setCloudSyncStatus] = useState('idle');
+  const [autoRefreshLive, setAutoRefreshLive] = useState(true);
+  const [lastSyncedTime, setLastSyncedTime] = useState(null);
 
-  // Helper header API Supabase (mendukung Publishable Key sb_publishable_... & Legacy JWT eyJ...)
   const buildSupabaseHeaders = useCallback((apiKey, extra = {}) => {
     const cleanKey = (apiKey || '').trim();
-    const headers = {
-      apikey: cleanKey,
-      ...extra,
-    };
+    const headers = { apikey: cleanKey, ...extra };
     if (cleanKey.startsWith('eyJ')) {
       headers.Authorization = `Bearer ${cleanKey}`;
     }
     return headers;
   }, []);
 
-  // Helper kirim hasil ujian ke Supabase jika sudah dihubungkan
-  const pushSessionToSupabase = useCallback(
-    async (sessionPayload) => {
-      if (!supabaseConfig.connected || !supabaseConfig.url || !supabaseConfig.anonKey) return;
+  // --- FUNGSI SINKRONISASI CLOUD SUPABASE (CRUD PENUH) ---
+  const upsertCloudRows = useCallback(
+    async (table, rows, configOverride = null) => {
+      const cfg = configOverride || supabaseConfig;
+      if (!cfg.connected || !cfg.url || !cfg.anonKey || !rows.length) return { ok: false, skipped: true };
+      const cleanUrl = cfg.url.trim().replace(/\/$/, '');
       try {
-        const cleanUrl = supabaseConfig.url.trim().replace(/\/$/, '');
-        await fetch(`${cleanUrl}/rest/v1/student_sessions`, {
+        const res = await fetch(`${cleanUrl}/rest/v1/${table}`, {
           method: 'POST',
-          headers: buildSupabaseHeaders(supabaseConfig.anonKey, {
+          headers: buildSupabaseHeaders(cfg.anonKey, {
             'Content-Type': 'application/json',
-            Prefer: 'return=minimal',
+            Prefer: 'resolution=merge-duplicates,return=minimal',
           }),
-          body: JSON.stringify({
-            student_name: sessionPayload.studentName,
-            student_class: sessionPayload.studentClass,
-            birth_date: sessionPayload.birthDate,
-            status: 'COMPLETED',
-            score_total: sessionPayload.scoreTotal,
-          }),
+          body: JSON.stringify(rows),
         });
-      } catch {
-        // Tetap aman tersimpan di sesi lokal aplikasi
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          if (res.status === 404 || String(err.message || '').includes('does not exist')) {
+            setCloudSyncStatus('needs_sql');
+          }
+          return { ok: false, status: res.status, message: err.message || res.statusText };
+        }
+        setCloudSyncStatus('synced');
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, message: e.message };
       }
     },
     [supabaseConfig, buildSupabaseHeaders]
   );
 
+  const deleteCloudRow = useCallback(
+    async (table, id) => {
+      if (!supabaseConfig.connected || !supabaseConfig.url || !supabaseConfig.anonKey) return;
+      const cleanUrl = supabaseConfig.url.trim().replace(/\/$/, '');
+      try {
+        await fetch(`${cleanUrl}/rest/v1/${table}?id=eq.${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: buildSupabaseHeaders(supabaseConfig.anonKey),
+        });
+      } catch {
+        // Tetap terhapus lokal
+      }
+    },
+    [supabaseConfig, buildSupabaseHeaders]
+  );
+
+  // Memuat seluruh data terbaru dari Supabase (Paket, Wacana, Soal, Sesi Nilai)
+  const loadAllFromSupabase = useCallback(
+    async (cfg = supabaseConfig, silent = false) => {
+      if (!cfg.connected || !cfg.url || !cfg.anonKey) return false;
+      const cleanUrl = cfg.url.trim().replace(/\/$/, '');
+      setCloudSyncStatus('syncing');
+      try {
+        const headers = buildSupabaseHeaders(cfg.anonKey);
+        const [pkgRes, stimRes, qRes, sessRes] = await Promise.all([
+          fetch(`${cleanUrl}/rest/v1/tka_packages?select=id,data`, { headers }),
+          fetch(`${cleanUrl}/rest/v1/tka_stimuli?select=id,data`, { headers }),
+          fetch(`${cleanUrl}/rest/v1/tka_questions?select=id,data`, { headers }),
+          fetch(`${cleanUrl}/rest/v1/tka_sessions?select=id,data`, { headers }),
+        ]);
+
+        if (!pkgRes.ok || !qRes.ok) {
+          setCloudSyncStatus('needs_sql');
+          if (!silent) {
+            showToast(
+              'Tabel sinkronisasi (tka_packages/tka_questions) belum dibuat. Jalankan SQL Bagian 4 di Supabase!',
+              'error'
+            );
+          }
+          return false;
+        }
+
+        const [pkgRows, stimRows, qRows, sessRows] = await Promise.all([
+          pkgRes.json(),
+          stimRes.ok ? stimRes.json() : [],
+          qRes.json(),
+          sessRes.ok ? sessRes.json() : [],
+        ]);
+
+        if (Array.isArray(pkgRows) && pkgRows.length > 0) {
+          const loadedPkgs = pkgRows.map((r) => r.data);
+          setPackages(loadedPkgs);
+          setAdminPkgId((prev) => (loadedPkgs.some((p) => p.id === prev) ? prev : loadedPkgs[0].id));
+        }
+        if (Array.isArray(stimRows) && stimRows.length > 0) {
+          setStimuli(stimRows.map((r) => r.data));
+        }
+        if (Array.isArray(qRows) && qRows.length > 0) {
+          setQuestions(qRows.map((r) => r.data));
+        }
+        if (Array.isArray(sessRows) && sessRows.length > 0) {
+          setSessions(sessRows.map((r) => r.data));
+        }
+
+        const now = new Date();
+        setLastSyncedTime(
+          `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(
+            now.getSeconds()
+          ).padStart(2, '0')}`
+        );
+        setCloudSyncStatus('synced');
+        if (!silent) showToast('Data terbaru berhasil dimuat dari Supabase Cloud!');
+        return true;
+      } catch {
+        setCloudSyncStatus('idle');
+        if (!silent) showToast('Gagal memuat data dari Supabase. Menggunakan data lokal.', 'error');
+        return false;
+      }
+    },
+    [supabaseConfig, buildSupabaseHeaders, showToast]
+  );
+
+  // Menyegarkan khusus data nilai siswa secara ringan untuk Live Auto-Refresh (10 detik)
+  const refreshSessionsFromSupabase = useCallback(
+    async (cfg = supabaseConfig, silent = true) => {
+      if (!cfg.connected || !cfg.url || !cfg.anonKey) return false;
+      const cleanUrl = cfg.url.trim().replace(/\/$/, '');
+      try {
+        const res = await fetch(`${cleanUrl}/rest/v1/tka_sessions?select=id,data`, {
+          headers: buildSupabaseHeaders(cfg.anonKey),
+        });
+        if (!res.ok) return false;
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows.length > 0) {
+          setSessions(rows.map((r) => r.data));
+        }
+        const now = new Date();
+        setLastSyncedTime(
+          `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(
+            now.getSeconds()
+          ).padStart(2, '0')}`
+        );
+        setCloudSyncStatus('synced');
+        if (!silent) showToast('Rekap nilai terbaru berhasil dimuat dari Supabase!');
+        return true;
+      } catch {
+        if (!silent) showToast('Gagal menyegarkan data nilai dari Supabase.', 'error');
+        return false;
+      }
+    },
+    [supabaseConfig, buildSupabaseHeaders, showToast]
+  );
+
+  // Mengunggah seluruh data lokal (paket, wacana, soal, nilai) ke Supabase sekaligus
+  const pushAllLocalToSupabase = useCallback(
+    async (cfg = supabaseConfig) => {
+      if (!cfg.connected || !cfg.url || !cfg.anonKey) {
+        showToast('Hubungkan Supabase terlebih dahulu.', 'error');
+        return;
+      }
+      setCloudSyncStatus('syncing');
+      const [r1, r2, r3, r4] = await Promise.all([
+        upsertCloudRows(
+          'tka_packages',
+          packages.map((p) => ({ id: p.id, data: p })),
+          cfg
+        ),
+        upsertCloudRows(
+          'tka_stimuli',
+          stimuli.map((s) => ({ id: s.id, package_id: s.packageId, data: s })),
+          cfg
+        ),
+        upsertCloudRows(
+          'tka_questions',
+          questions.map((q) => ({ id: q.id, package_id: q.packageId, data: q })),
+          cfg
+        ),
+        upsertCloudRows(
+          'tka_sessions',
+          sessions.map((s) => ({ id: s.id, package_id: s.packageId, data: s })),
+          cfg
+        ),
+      ]);
+
+      if (r1.ok && r3.ok) {
+        setCloudSyncStatus('synced');
+        showToast(`Berhasil mengunggah ${packages.length} paket & ${questions.length} soal ke Supabase!`);
+      } else {
+        setCloudSyncStatus('needs_sql');
+        showToast(
+          'Gagal mengunggah ke Supabase. Pastikan SQL Bagian 4 (tka_packages, tka_questions, dll.) sudah dijalankan!',
+          'error'
+        );
+      }
+    },
+    [packages, stimuli, questions, sessions, supabaseConfig, upsertCloudRows, showToast]
+  );
+
+  // Muat otomatis data dari Supabase saat aplikasi dibuka
+  useEffect(() => {
+    if (supabaseConfig.connected && supabaseConfig.url && supabaseConfig.anonKey) {
+      loadAllFromSupabase(supabaseConfig, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-Refresh Real-Time setiap 10 detik saat Guru membuka Dashboard
+  useEffect(() => {
+    if (portalMode !== 'TEACHER_DASHBOARD' || !supabaseConfig.connected || !autoRefreshLive) {
+      return;
+    }
+    const intervalId = setInterval(() => {
+      refreshSessionsFromSupabase(supabaseConfig, true);
+    }, 10000);
+    return () => clearInterval(intervalId);
+  }, [portalMode, supabaseConfig, autoRefreshLive, refreshSessionsFromSupabase]);
+
   // ==========================================================================
   // STATE PORTAL SISWA
   // ==========================================================================
-  const [step, setStep] = useState('TOKEN'); // 'TOKEN' | 'IDENTITY' | 'EXAM' | 'RESULT'
+  const [step, setStep] = useState('TOKEN');
   const [tokenInput, setTokenInput] = useState('');
   const [tokenError, setTokenError] = useState('');
   const [selectedPackage, setSelectedPackage] = useState(null);
@@ -720,7 +860,6 @@ export default function App() {
     setActiveMatchLeft(null);
   }, [currentIdx]);
 
-  // Menyelesaikan ujian & mencatat hasil ke daftar sesi Portal Guru
   const finishExamAndRecord = useCallback(() => {
     if (!selectedPackage) return;
     const itemScores = {};
@@ -739,7 +878,7 @@ export default function App() {
     ).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     const newSession = {
-      id: `sess-${Date.now()}`,
+      id: `sess-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       packageId: selectedPackage.id,
       studentName: student.name.trim(),
       studentClass: student.className,
@@ -751,12 +890,11 @@ export default function App() {
     };
 
     setSessions((prev) => [newSession, ...prev]);
-    pushSessionToSupabase(newSession);
+    upsertCloudRows('tka_sessions', [{ id: newSession.id, package_id: newSession.packageId, data: newSession }]);
     setShowFinishModal(false);
     setStep('RESULT');
-  }, [activeQuestions, answers, pushSessionToSupabase, selectedPackage, student]);
+  }, [activeQuestions, answers, selectedPackage, student, upsertCloudRows]);
 
-  // Timer Mundur saat EXAM
   useEffect(() => {
     if (portalMode !== 'STUDENT' || step !== 'EXAM') return;
     if (timeLeft <= 0) {
@@ -844,19 +982,7 @@ export default function App() {
     const countPartial = details.filter((d) => d.status === 'partial').length;
     const countWrong = details.filter((d) => d.status === 'wrong' || d.status === 'unanswered').length;
 
-    const topicMap = {};
-    details.forEach((d) => {
-      const key = d.question.topic;
-      if (!topicMap[key]) topicMap[key] = { topic: key, obtained: 0, max: 0 };
-      topicMap[key].obtained += d.score;
-      topicMap[key].max += d.maxScore;
-    });
-    const topicBreakdown = Object.values(topicMap).map((t) => ({
-      ...t,
-      percent: t.max > 0 ? Math.round((t.obtained / t.max) * 100) : 0,
-    }));
-
-    return { details, scoreTotal, countCorrect, countPartial, countWrong, topicBreakdown };
+    return { details, scoreTotal, countCorrect, countPartial, countWrong };
   }, [activeQuestions, answers]);
 
   // ==========================================================================
@@ -864,12 +990,8 @@ export default function App() {
   // ==========================================================================
   const [teacherPass, setTeacherPass] = useState('');
   const [teacherLoginErr, setTeacherLoginErr] = useState('');
-  const [teacherTab, setTeacherTab] = useState('PACKAGES'); // 'PACKAGES' | 'QUESTIONS' | 'RESULTS' | 'ANALYSIS' | 'SETTINGS'
+  const [teacherTab, setTeacherTab] = useState('PACKAGES');
 
-  // Paket yang sedang dipilih di Portal Guru
-  const [adminPkgId, setAdminPkgId] = useState(INITIAL_PACKAGES[0].id);
-
-  // Modal Tambah Paket Baru
   const [showNewPkgModal, setShowNewPkgModal] = useState(false);
   const [newPkgForm, setNewPkgForm] = useState({
     title: '',
@@ -878,7 +1000,6 @@ export default function App() {
     durationMinutes: 45,
   });
 
-  // Sub-tab Bank Soal: 'LIST' | 'STIMULI'
   const [bankSubTab, setBankSubTab] = useState('LIST');
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState(null);
@@ -890,7 +1011,6 @@ export default function App() {
     stimulusId: '',
     questionText: '',
     explanation: '',
-    // Opsi PG / PG Kompleks
     pgOptions: [
       { id: 'A', text: '' },
       { id: 'B', text: '' },
@@ -899,12 +1019,10 @@ export default function App() {
     ],
     pgCorrect: 'A',
     pgKompleksCorrect: ['A'],
-    // Opsi Benar/Salah
     bsStatements: [
       { id: 'p1', text: '', answer: true },
       { id: 'p2', text: '', answer: false },
     ],
-    // Opsi Menjodohkan
     matchPairs: [
       { id: '1', leftText: '', rightText: '' },
       { id: '2', leftText: '', rightText: '' },
@@ -912,19 +1030,15 @@ export default function App() {
     ],
   });
 
-  // Modal Tambah Wacana/Stimulus
   const [showStimulusModal, setShowStimulusModal] = useState(false);
   const [stimForm, setStimForm] = useState({ title: '', content: '' });
 
-  // Filter Rekap Nilai
   const [resultClassFilter, setResultClassFilter] = useState('ALL');
   const [resultSearch, setResultSearch] = useState('');
-
-  // Konfirmasi Hapus Custom Modal
-  const [deleteTarget, setDeleteTarget] = useState(null); // { type: 'package'|'question'|'stimulus', id, label }
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   // ==========================================================================
-  // HANDLER PORTAL GURU
+  // HANDLER PORTAL GURU (DENGAN SIMPAN LOKAL + SUPABASE OTOMATIS)
   // ==========================================================================
 
   const handleTeacherLogin = (e) => {
@@ -944,7 +1058,7 @@ export default function App() {
     return `${prefix}${rand}`;
   };
 
-  const handleCreatePackage = (e) => {
+  const handleCreatePackage = async (e) => {
     e.preventDefault();
     if (!newPkgForm.title.trim()) return;
     const tokenVal = (newPkgForm.token.trim() || generateRandomToken(newPkgForm.subject)).toUpperCase();
@@ -965,7 +1079,21 @@ export default function App() {
     setAdminPkgId(created.id);
     setShowNewPkgModal(false);
     setNewPkgForm({ title: '', subject: 'Matematika', token: '', durationMinutes: 45 });
-    showToast(`Paket "${created.title}" (Token: ${created.token}) berhasil dibuat!`);
+
+    const res = await upsertCloudRows('tka_packages', [{ id: created.id, data: created }]);
+    if (res.ok) {
+      showToast(`Paket "${created.title}" tersimpan di lokal & Supabase Cloud!`);
+    } else if (res.skipped) {
+      showToast(`Paket "${created.title}" tersimpan permanen di perangkat ini!`);
+    } else {
+      showToast('Paket tersimpan lokal. Jalankan SQL Bagian 4 di Supabase agar tersimpan di Cloud.', 'error');
+    }
+  };
+
+  const handleTogglePackageActive = async (pkg) => {
+    const updated = { ...pkg, isActive: !pkg.isActive };
+    setPackages((prev) => prev.map((p) => (p.id === pkg.id ? updated : p)));
+    await upsertCloudRows('tka_packages', [{ id: updated.id, data: updated }]);
   };
 
   const openNewQuestionModal = () => {
@@ -1051,7 +1179,7 @@ export default function App() {
     setShowQuestionModal(true);
   };
 
-  const handleSaveQuestion = (e) => {
+  const handleSaveQuestion = async (e) => {
     e.preventDefault();
     const targetPkg = packages.find((p) => p.id === adminPkgId);
     if (!targetPkg || !qForm.questionText.trim()) return;
@@ -1076,7 +1204,6 @@ export default function App() {
       const valid = qForm.matchPairs.filter((m) => m.leftText.trim() && m.rightText.trim());
       const left = valid.map((m, i) => ({ id: `L${i + 1}`, text: m.leftText }));
       const right = valid.map((m, i) => ({ id: `R${i + 1}`, text: m.rightText }));
-      // Acak tampilan kolom kanan secara deterministik agar tidak sejajar lurus
       const shiftedRight = right.length > 1 ? [...right.slice(1), right[0]] : right;
       optionsPayload = { left, right: shiftedRight };
       correctPayload = {};
@@ -1102,15 +1229,25 @@ export default function App() {
 
     if (editingQuestionId) {
       setQuestions((prev) => prev.map((q) => (q.id === editingQuestionId ? questionObj : q)));
-      showToast('Perubahan soal berhasil disimpan!');
     } else {
       setQuestions((prev) => [...prev, questionObj]);
-      showToast('Soal baru berhasil ditambahkan ke paket!');
     }
     setShowQuestionModal(false);
+
+    const res = await upsertCloudRows('tka_questions', [
+      { id: questionObj.id, package_id: questionObj.packageId, data: questionObj },
+    ]);
+
+    if (res.ok) {
+      showToast('Soal berhasil disimpan ke perangkat & Supabase Cloud!');
+    } else if (res.skipped) {
+      showToast('Soal berhasil disimpan permanen di perangkat ini!');
+    } else {
+      showToast('Soal tersimpan lokal. Jalankan SQL Bagian 4 di Supabase agar tersimpan di Cloud.', 'error');
+    }
   };
 
-  const handleCreateStimulus = (e) => {
+  const handleCreateStimulus = async (e) => {
     e.preventDefault();
     const targetPkg = packages.find((p) => p.id === adminPkgId);
     if (!targetPkg || !stimForm.title.trim() || !stimForm.content.trim()) return;
@@ -1125,10 +1262,14 @@ export default function App() {
     setStimuli((prev) => [created, ...prev]);
     setStimForm({ title: '', content: '' });
     setShowStimulusModal(false);
-    showToast('Wacana/Stimulus baru berhasil ditambahkan!');
+
+    const res = await upsertCloudRows('tka_stimuli', [
+      { id: created.id, package_id: created.packageId, data: created },
+    ]);
+    showToast(res.ok ? 'Wacana tersimpan ke Supabase Cloud!' : 'Wacana tersimpan permanen di perangkat ini!');
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     if (deleteTarget.type === 'package') {
       setPackages((prev) => prev.filter((p) => p.id !== deleteTarget.id));
@@ -1137,21 +1278,23 @@ export default function App() {
         const remaining = packages.filter((p) => p.id !== deleteTarget.id);
         setAdminPkgId(remaining[0]?.id || '');
       }
+      await deleteCloudRow('tka_packages', deleteTarget.id);
       showToast('Paket soal berhasil dihapus.');
     } else if (deleteTarget.type === 'question') {
       setQuestions((prev) => prev.filter((q) => q.id !== deleteTarget.id));
+      await deleteCloudRow('tka_questions', deleteTarget.id);
       showToast('Butir soal berhasil dihapus.');
     } else if (deleteTarget.type === 'stimulus') {
       setStimuli((prev) => prev.filter((s) => s.id !== deleteTarget.id));
       setQuestions((prev) =>
         prev.map((q) => (q.stimulusId === deleteTarget.id ? { ...q, stimulusId: null } : q))
       );
+      await deleteCloudRow('tka_stimuli', deleteTarget.id);
       showToast('Wacana berhasil dihapus.');
     }
     setDeleteTarget(null);
   };
 
-  // Download Template CSV untuk Import Massal Soal PG
   const handleDownloadCsvTemplate = () => {
     const csvContent = [
       'topik,tingkat_kesulitan,pertanyaan,opsi_a,opsi_b,opsi_c,opsi_d,kunci,pembahasan',
@@ -1167,14 +1310,13 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
-  // Import Soal Massal dari CSV
   const handleImportCsv = (e) => {
     const file = e.target.files?.[0];
     const targetPkg = packages.find((p) => p.id === adminPkgId);
     if (!file || !targetPkg) return;
 
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
         const text = String(ev.target?.result || '');
         const lines = text
@@ -1187,7 +1329,6 @@ export default function App() {
         }
         const imported = [];
         for (let i = 1; i < lines.length; i++) {
-          // Parser CSV sederhana mendukung tanda kutip
           const cols = lines[i].match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
           const clean = cols.map((c) => c.replace(/^"|"$/g, '').trim());
           if (clean.length >= 8) {
@@ -1214,7 +1355,15 @@ export default function App() {
         }
         if (imported.length > 0) {
           setQuestions((prev) => [...prev, ...imported]);
-          showToast(`Berhasil mengimpor ${imported.length} soal ke paket "${targetPkg.title}"!`);
+          const res = await upsertCloudRows(
+            'tka_questions',
+            imported.map((q) => ({ id: q.id, package_id: q.packageId, data: q }))
+          );
+          showToast(
+            res.ok
+              ? `Berhasil mengimpor & menyimpan ${imported.length} soal ke Supabase Cloud!`
+              : `Berhasil mengimpor ${imported.length} soal ke perangkat ini!`
+          );
         } else {
           showToast('Tidak ada baris soal yang valid pada file CSV.', 'error');
         }
@@ -1226,7 +1375,6 @@ export default function App() {
     e.target.value = '';
   };
 
-  // Export Rekap Nilai ke Excel (.csv)
   const handleExportResultsCsv = () => {
     const pkg = packages.find((p) => p.id === adminPkgId);
     const filtered = sessions.filter(
@@ -1248,7 +1396,7 @@ export default function App() {
   };
 
   // ==========================================================================
-  // PERHITUNGAN ANALISIS BUTIR SOAL (TEORI TES KLASIK) UNTUK PORTAL GURU
+  // ANALISIS BUTIR SOAL (TEORI TES KLASIK)
   // ==========================================================================
   const itemAnalysisData = useMemo(() => {
     const pkgQuestions = questions.filter((q) => q.packageId === adminPkgId);
@@ -1259,7 +1407,6 @@ export default function App() {
       return { items: [], topicSummary: [], totalParticipants: n };
     }
 
-    // Urutkan siswa dari nilai tertinggi ke terendah untuk Kelompok Atas & Bawah (27%)
     const sortedSessions = [...pkgSessions].sort((a, b) => b.scoreTotal - a.scoreTotal);
     const groupSize = Math.max(1, Math.round(n * 0.27));
     const upperGroup = sortedSessions.slice(0, groupSize);
@@ -1277,7 +1424,6 @@ export default function App() {
       const meanScore = scores.reduce((a, b) => a + b, 0) / n;
       const pValue = Number((meanScore / W).toFixed(2));
 
-      // Daya Pembeda (D = P_atas - P_bawah)
       const pUpper =
         upperGroup.reduce((acc, s) => {
           const sc =
@@ -1298,7 +1444,6 @@ export default function App() {
 
       const dValue = Number((pUpper - pLower).toFixed(2));
 
-      // Kategori P
       let pLabel = 'Sedang';
       let pColor = 'bg-sky-100 text-sky-800';
       if (pValue < 0.3) {
@@ -1309,7 +1454,6 @@ export default function App() {
         pColor = 'bg-emerald-100 text-emerald-800';
       }
 
-      // Kategori D
       let dLabel = 'Sangat Baik';
       let dColor = 'bg-emerald-100 text-emerald-800';
       if (dValue < 0.2) {
@@ -1323,7 +1467,6 @@ export default function App() {
         dColor = 'bg-sky-100 text-sky-800';
       }
 
-      // Sebaran Pengecoh khusus PG
       let distractorStats = null;
       if (q.type === 'PG' && Array.isArray(q.options)) {
         distractorStats = q.options.map((opt) => {
@@ -1333,22 +1476,11 @@ export default function App() {
         });
       }
 
-      // Agregasi Topik
       if (!topicMap[q.topic]) topicMap[q.topic] = { topic: q.topic, sumP: 0, count: 0 };
       topicMap[q.topic].sumP += pValue;
       topicMap[q.topic].count += 1;
 
-      return {
-        number: idx + 1,
-        question: q,
-        pValue,
-        pLabel,
-        pColor,
-        dValue,
-        dLabel,
-        dColor,
-        distractorStats,
-      };
+      return { number: idx + 1, question: q, pValue, pLabel, pColor, dValue, dLabel, dColor, distractorStats };
     });
 
     const topicSummary = Object.values(topicMap).map((t) => ({
@@ -1366,12 +1498,9 @@ export default function App() {
     lg: 'text-lg leading-loose',
   };
 
-  // ==========================================================================
-  // RENDER TOAST NOTIFIKASI
-  // ==========================================================================
   const ToastBanner = () =>
     toast ? (
-      <div className="fixed bottom-5 right-5 z-50 animate-bounce">
+      <div className="fixed bottom-5 right-5 z-50">
         <div
           className={`px-4 py-3 rounded-2xl shadow-xl border font-semibold text-sm flex items-center gap-2 ${
             toast.type === 'error'
@@ -1379,7 +1508,7 @@ export default function App() {
               : 'bg-slate-900 text-white border-slate-700'
           }`}
         >
-          {toast.type === 'error' ? <AlertCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+          {toast.type === 'error' ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />}
           <span>{toast.message}</span>
         </div>
       </div>
@@ -1397,9 +1526,9 @@ export default function App() {
             <div className="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <ShieldCheck className="w-8 h-8 text-sky-300" />
             </div>
-            <h1 className="text-xl font-bold">Portal Guru & Admin Sekolah</h1>
+            <h1 className="text-xl font-bold">Portal Guru &amp; Admin Sekolah</h1>
             <p className="text-sky-200 font-bold text-xs tracking-wider uppercase mt-1">{SCHOOL_NAME}</p>
-            <p className="text-slate-300 text-xs mt-1">Kelola Paket Soal, Nilai, & Analisis TKA</p>
+            <p className="text-slate-300 text-xs mt-1">Kelola Paket Soal, Nilai, &amp; Analisis TKA</p>
           </div>
           <form onSubmit={handleTeacherLogin} className="p-6 sm:p-8 space-y-5">
             <div>
@@ -1492,8 +1621,26 @@ export default function App() {
               </div>
               <div>
                 <h1 className="font-bold text-sm sm:text-base leading-tight">Portal Guru — {SCHOOL_NAME}</h1>
-                <p className="text-[11px] text-slate-400">
-                  {supabaseConfig.connected ? 'Terhubung ke Supabase Cloud' : 'Mode Aplikasi Lokal (Siap Sinkron Supabase)'}
+                <p className="text-[11px] text-slate-300 flex items-center gap-1.5">
+                  {supabaseConfig.connected ? (
+                    cloudSyncStatus === 'needs_sql' ? (
+                      '⚠ Supabase terhubung (Jalankan SQL Bagian 4 untuk sync soal)'
+                    ) : (
+                      <>
+                        <span
+                          className={`w-2 h-2 rounded-full inline-block ${
+                            autoRefreshLive ? 'bg-emerald-400 animate-pulse' : 'bg-sky-400'
+                          }`}
+                        />
+                        <span>
+                          {autoRefreshLive ? 'Live Auto-Refresh (10d) Aktif' : 'Terhubung ke Supabase Cloud'}
+                          {lastSyncedTime ? ` • Update: ${lastSyncedTime}` : ''}
+                        </span>
+                      </>
+                    )
+                  ) : (
+                    '● Tersimpan Lokal di Browser (Hubungkan Supabase untuk Cloud)'
+                  )}
                 </p>
               </div>
             </div>
@@ -1525,7 +1672,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* TAB NAVIGASI */}
           <div className="bg-slate-800/80 border-t border-slate-700/80">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 flex overflow-x-auto gap-1 py-2">
               {navItems.map((item) => {
@@ -1551,7 +1697,6 @@ export default function App() {
           </div>
         </header>
 
-        {/* KONTEN UTAMA PORTAL GURU */}
         <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
           {/* KPI RINGKAS */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -1580,7 +1725,7 @@ export default function App() {
                 <div>
                   <h2 className="text-lg font-extrabold text-slate-800">Daftar Paket Ujian (Terpisah per Mata Pelajaran)</h2>
                   <p className="text-xs sm:text-sm text-slate-500">
-                    Buat paket baru untuk simulasi berikutnya tanpa menghapus data nilai simulasi sebelumnya.
+                    Semua paket dan soal tersimpan permanen secara otomatis.
                   </p>
                 </div>
                 <button
@@ -1615,11 +1760,7 @@ export default function App() {
                           </span>
                           <button
                             type="button"
-                            onClick={() =>
-                              setPackages((prev) =>
-                                prev.map((p) => (p.id === pkg.id ? { ...p, isActive: !p.isActive } : p))
-                              )
-                            }
+                            onClick={() => handleTogglePackageActive(pkg)}
                             className={`px-3 py-1 rounded-full text-xs font-bold transition ${
                               pkg.isActive
                                 ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
@@ -1685,7 +1826,6 @@ export default function App() {
           {/* ================= TAB 2: BANK SOAL & WACANA ================= */}
           {teacherTab === 'QUESTIONS' && (
             <div className="space-y-4">
-              {/* Bar Pilih Paket & Aksi */}
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                   <label className="text-xs font-bold uppercase text-slate-500">Paket Aktif:</label>
@@ -1735,7 +1875,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Sub-Tab Daftar Soal vs Wacana */}
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -1842,50 +1981,43 @@ export default function App() {
             <div className="space-y-4">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={adminPkgId}
-                    onChange={(e) => setAdminPkgId(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 font-bold text-sm bg-white"
+                  {supabaseConfig.connected && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setAutoRefreshLive((prev) => !prev)}
+                        className={`px-3 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border transition ${
+                          autoRefreshLive
+                            ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                            : 'bg-slate-50 border-slate-200 text-slate-600'
+                        }`}
+                        title="Otomatis menyegarkan nilai siswa setiap 10 detik"
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            autoRefreshLive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                          }`}
+                        />
+                        Live 10d: {autoRefreshLive ? 'ON' : 'OFF'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => refreshSessionsFromSupabase(supabaseConfig, false)}
+                        className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs flex items-center gap-1.5"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" /> Muat Terbaru
+                      </button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleExportResultsCsv}
+                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm"
                   >
-                    {packages.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.title}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={resultClassFilter}
-                    onChange={(e) => setResultClassFilter(e.target.value)}
-                    className="px-3 py-2 rounded-xl border border-slate-200 font-semibold text-sm bg-white"
-                  >
-                    <option value="ALL">Semua Kelas</option>
-                    <option value="6A">Kelas 6A</option>
-                    <option value="6B">Kelas 6B</option>
-                    <option value="6C">Kelas 6C</option>
-                    <option value="6D">Kelas 6D</option>
-                  </select>
-
-                  <div className="relative">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={resultSearch}
-                      onChange={(e) => setResultSearch(e.target.value)}
-                      placeholder="Cari nama siswa..."
-                      className="pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm outline-none focus:border-indigo-500"
-                    />
-                  </div>
+                    <FileSpreadsheet className="w-4 h-4" />
+                    Download Excel (.csv)
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleExportResultsCsv}
-                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <FileSpreadsheet className="w-4 h-4" />
-                  Download Rekap Excel (.csv)
-                </button>
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1967,7 +2099,6 @@ export default function App() {
                 </span>
               </div>
 
-              {/* Pemetaan Ketuntasan Materi */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <h3 className="font-extrabold text-slate-800 text-base">
                   Pemetaan Ketuntasan Topik / Materi ({activeAdminPkg?.subject})
@@ -2004,11 +2135,10 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Tabel Analisis Teori Tes Klasik */}
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="p-5 border-b border-slate-100">
                   <h3 className="font-extrabold text-slate-800 text-base">
-                    Analisis Butir Soal (Tingkat Kesukaran P, Daya Pembeda D, & Pengecoh)
+                    Analisis Butir Soal (Tingkat Kesukaran P, Daya Pembeda D, &amp; Pengecoh)
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
                     P = Rata-rata skor / bobot maksimal • D = Selisih capaian 27% Kelompok Atas dan 27% Kelompok Bawah.
@@ -2019,7 +2149,7 @@ export default function App() {
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500">
                         <th className="p-4">No</th>
-                        <th className="p-4">Topik & Tipe</th>
+                        <th className="p-4">Topik &amp; Tipe</th>
                         <th className="p-4 text-center">Tingkat Kesukaran (P)</th>
                         <th className="p-4 text-center">Daya Pembeda (D)</th>
                         <th className="p-4">Sebaran Jawaban (Khusus PG)</th>
@@ -2058,7 +2188,6 @@ export default function App() {
                                         ? 'bg-rose-50 border-rose-200 text-rose-700'
                                         : 'bg-slate-50 border-slate-200 text-slate-700'
                                     }`}
-                                    title={d.isKey ? 'Kunci Jawaban' : d.pct < 5 ? 'Pengecoh kurang efektif (<5%)' : 'Pengecoh efektif'}
                                   >
                                     {d.id}: {d.pct}%{d.isKey ? ' ✓' : ''}
                                   </span>
@@ -2085,9 +2214,9 @@ export default function App() {
                   <Database className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="font-extrabold text-slate-900 text-lg">Koneksi Database Supabase (200 Siswa Serentak)</h2>
+                  <h2 className="font-extrabold text-slate-900 text-lg">Koneksi &amp; Sinkronisasi Penuh Supabase Cloud</h2>
                   <p className="text-xs text-slate-500">
-                    Hubungkan proyek Supabase Anda agar seluruh nilai siswa tersimpan permanen di Cloud.
+                    Menyimpan Paket, Wacana, Bank Soal, dan Rekap Nilai siswa secara permanen di Cloud.
                   </p>
                 </div>
               </div>
@@ -2125,7 +2254,13 @@ export default function App() {
                 {supabaseConfig.connected && (
                   <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 font-semibold flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-                    <span>Koneksi aktif & tersimpan ke: {supabaseConfig.url}</span>
+                    <span>Koneksi aktif ke: {supabaseConfig.url}</span>
+                  </div>
+                )}
+
+                {cloudSyncStatus === 'needs_sql' && (
+                  <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-900 font-semibold">
+                    Tabel sinkronisasi soal (<code>tka_packages</code> &amp; <code>tka_questions</code>) belum dibuat. Jalankan skrip <strong>Bagian 4</strong> dari file <code>skema_database_supabase.md</code> di SQL Editor Supabase, lalu klik tombol <strong>Unggah Semua Data ke Cloud</strong> di bawah.
                   </div>
                 )}
 
@@ -2136,45 +2271,80 @@ export default function App() {
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const cleanUrl = supabaseConfig.url.trim().replace(/\/$/, '');
-                    const cleanKey = supabaseConfig.anonKey.trim();
-                    setSupabaseTestError('');
-                    if (!cleanUrl || !cleanKey) {
-                      showToast('Isi URL dan Key Supabase terlebih dahulu.', 'error');
-                      return;
-                    }
-                    try {
-                      const res = await fetch(`${cleanUrl}/rest/v1/exam_packages?select=id&limit=1`, {
-                        headers: buildSupabaseHeaders(cleanKey),
-                      });
-                      if (res.ok) {
-                        const nextConfig = { url: cleanUrl, anonKey: cleanKey, connected: true };
-                        setSupabaseConfig(nextConfig);
-                        try {
-                          localStorage.setItem('tka_supabase_config', JSON.stringify(nextConfig));
-                        } catch {
-                          // Abaikan jika penyimpanan dibatasi
-                        }
-                        showToast('Berhasil terhubung ke database Supabase!');
-                      } else {
-                        const errData = await res.json().catch(() => ({}));
-                        const detail = errData.message || errData.error_description || res.statusText || 'Akses ditolak';
-                        setSupabaseTestError(`Kode ${res.status}: ${detail}`);
-                        showToast(`Koneksi ditolak (${res.status}). Lihat detail di bawah tombol.`, 'error');
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const cleanUrl = supabaseConfig.url.trim().replace(/\/$/, '');
+                      const cleanKey = supabaseConfig.anonKey.trim();
+                      setSupabaseTestError('');
+                      if (!cleanUrl || !cleanKey) {
+                        showToast('Isi URL dan Key Supabase terlebih dahulu.', 'error');
+                        return;
                       }
-                    } catch {
-                      setSupabaseTestError('Gagal menghubungi server. Pastikan Project URL diawali https:// dan berakhiran .supabase.co');
-                      showToast('Gagal menghubungi server Supabase. Cek kembali URL proyek.', 'error');
-                    }
-                  }}
-                  className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center gap-2 transition"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Uji & Simpan Koneksi Supabase
-                </button>
+                      try {
+                        const res = await fetch(`${cleanUrl}/rest/v1/tka_packages?select=id&limit=1`, {
+                          headers: buildSupabaseHeaders(cleanKey),
+                        });
+                        if (res.ok) {
+                          const nextConfig = { url: cleanUrl, anonKey: cleanKey, connected: true };
+                          setSupabaseConfig(nextConfig);
+                          saveLocalJson(STORAGE_KEYS.supabase, nextConfig);
+                          setCloudSyncStatus('synced');
+                          showToast('Berhasil terhubung ke Supabase Cloud! Memuat data...');
+                          await loadAllFromSupabase(nextConfig, true);
+                        } else {
+                          const errData = await res.json().catch(() => ({}));
+                          const detail = errData.message || errData.error_description || res.statusText || 'Akses ditolak';
+                          if (res.status === 404 || String(detail).includes('does not exist')) {
+                            setCloudSyncStatus('needs_sql');
+                          }
+                          setSupabaseTestError(`Kode ${res.status}: ${detail}`);
+                          showToast(`Koneksi ditolak (${res.status}). Lihat detail di atas tombol.`, 'error');
+                        }
+                      } catch {
+                        setSupabaseTestError('Gagal menghubungi server. Pastikan Project URL diawali https:// dan berakhiran .supabase.co');
+                        showToast('Gagal menghubungi server Supabase.', 'error');
+                      }
+                    }}
+                    className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center gap-2 transition"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Uji &amp; Simpan Koneksi
+                  </button>
+
+                  {supabaseConfig.connected && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => pushAllLocalToSupabase(supabaseConfig)}
+                        className="px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm flex items-center gap-2 transition"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Unggah Semua Data ke Cloud
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => loadAllFromSupabase(supabaseConfig, false)}
+                        className="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-sm flex items-center gap-2 transition"
+                      >
+                        <Download className="w-4 h-4" />
+                        Muat dari Cloud
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-2xl bg-sky-50 border border-sky-200 text-xs text-sky-900 space-y-1.5">
+                  <p className="font-extrabold">Penting untuk Ujian 200 Chromebook Siswa (Real-Time):</p>
+                  <p>
+                    Agar semua Chromebook siswa otomatis memuat soal terbaru dan langsung mengirim nilai secara{' '}
+                    <strong>real-time</strong> ke layar Guru tanpa perlu login/setting di perangkat siswa, isikan{' '}
+                    <strong>URL</strong> dan <strong>Anon Key</strong> Supabase kamu pada baris{' '}
+                    <code>DEFAULT_SUPABASE_URL</code> dan <code>DEFAULT_SUPABASE_ANON_KEY</code> di bagian atas file{' '}
+                    <code>src/App.jsx</code> (GitHub), lalu klik <strong>Commit changes</strong>.
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -2182,7 +2352,7 @@ export default function App() {
 
         {/* ================= MODAL BUAT PAKET BARU ================= */}
         {showNewPkgModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
             <form
               onSubmit={handleCreatePackage}
               className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4"
@@ -2263,7 +2433,7 @@ export default function App() {
 
         {/* ================= MODAL TAMBAH / EDIT SOAL ================= */}
         {showQuestionModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
             <form
               onSubmit={handleSaveQuestion}
               className="bg-white rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden"
@@ -2332,7 +2502,6 @@ export default function App() {
                   />
                 </div>
 
-                {/* Form Dinamis Berdasarkan Tipe Soal */}
                 {(qForm.type === 'PG' || qForm.type === 'PG_KOMPLEKS') && (
                   <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                     <p className="text-xs font-bold text-slate-700">
@@ -2384,7 +2553,7 @@ export default function App() {
                 {qForm.type === 'BENAR_SALAH' && (
                   <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-bold text-slate-700">Daftar Pernyataan & Kunci:</p>
+                      <p className="text-xs font-bold text-slate-700">Daftar Pernyataan &amp; Kunci:</p>
                       <button
                         type="button"
                         onClick={() =>
@@ -2434,7 +2603,7 @@ export default function App() {
 
                 {qForm.type === 'MENJODOHKAN' && (
                   <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                    <p className="text-xs font-bold text-slate-700">Pasangan Kolom Kiri & Jawaban Benar Kolom Kanan:</p>
+                    <p className="text-xs font-bold text-slate-700">Pasangan Kolom Kiri &amp; Jawaban Benar Kolom Kanan:</p>
                     {qForm.matchPairs.map((mp, idx) => (
                       <div key={mp.id} className="grid grid-cols-2 gap-2">
                         <input
@@ -2499,7 +2668,7 @@ export default function App() {
 
         {/* ================= MODAL TAMBAH WACANA ================= */}
         {showStimulusModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
             <form
               onSubmit={handleCreateStimulus}
               className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4"
@@ -2553,7 +2722,7 @@ export default function App() {
 
         {/* ================= MODAL KONFIRMASI HAPUS ================= */}
         {deleteTarget && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-center">
               <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
                 <Trash2 className="w-6 h-6" />
@@ -2596,7 +2765,6 @@ export default function App() {
       <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-indigo-50 flex flex-col items-center justify-center p-4 relative">
         <ToastBanner />
 
-        {/* Tombol Masuk Portal Guru */}
         <button
           type="button"
           onClick={() => setPortalMode('TEACHER_LOGIN')}
@@ -2613,7 +2781,7 @@ export default function App() {
             </div>
             <h1 className="text-xl font-bold tracking-tight">Portal Simulasi TKA</h1>
             <p className="text-white font-extrabold text-sm tracking-wide mt-1">{SCHOOL_NAME}</p>
-            <p className="text-sky-100 text-xs mt-1">Kelas 6 • Matematika & Bahasa Indonesia</p>
+            <p className="text-sky-100 text-xs mt-1">Kelas 6 • Matematika &amp; Bahasa Indonesia</p>
           </div>
 
           <div className="p-6 sm:p-8">
@@ -2650,7 +2818,6 @@ export default function App() {
               </button>
             </form>
 
-            {/* Daftar Token Aktif untuk Kemudahan Uji Coba */}
             <div className="mt-6 p-4 bg-amber-50 border border-amber-200/80 rounded-2xl">
               <div className="flex items-start gap-3">
                 <Sparkles className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -2688,7 +2855,7 @@ export default function App() {
           </div>
         </div>
         <p className="text-xs text-slate-400 mt-6 text-center">
-          {SCHOOL_NAME} • Tanpa akun/password siswa • Hasil & Pembahasan Langsung Tampil
+          {SCHOOL_NAME} • Tanpa akun/password siswa • Hasil &amp; Pembahasan Langsung Tampil
         </p>
       </div>
     );
@@ -3193,9 +3360,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* SIDEBAR NOMOR SOAL DESKTOP */}
           <aside className="hidden lg:block lg:col-span-4 xl:col-span-3">
-            <div className="sticky top-22 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">
+            <div className="sticky top-20 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-5">
               <div>
                 <h3 className="font-bold text-slate-800">Daftar Nomor Soal</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -3215,7 +3381,7 @@ export default function App() {
                       type="button"
                       onClick={() => setCurrentIdx(idx)}
                       className={`h-11 rounded-xl font-bold text-sm border transition ${btnColor} ${
-                        idx === currentIdx ? 'ring-3 ring-sky-500 ring-offset-2' : ''
+                        idx === currentIdx ? 'ring-2 ring-sky-500 ring-offset-2' : ''
                       }`}
                     >
                       {item.number}
@@ -3228,13 +3394,12 @@ export default function App() {
                 onClick={() => setShowFinishModal(true)}
                 className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm flex items-center justify-center gap-2"
               >
-                <CheckCircle2 className="w-5 h-5" /> Selesai & Lihat Nilai
+                <CheckCircle2 className="w-5 h-5" /> Selesai &amp; Lihat Nilai
               </button>
             </div>
           </aside>
         </main>
 
-        {/* DRAWER MOBILE */}
         {showNavDrawer && (
           <div className="fixed inset-0 z-50 bg-slate-900/50 flex justify-end lg:hidden">
             <div className="w-80 max-w-[85vw] bg-white h-full p-5 flex flex-col justify-between overflow-y-auto shadow-2xl">
@@ -3276,15 +3441,14 @@ export default function App() {
                 }}
                 className="w-full mt-6 py-3.5 bg-emerald-600 text-white font-bold rounded-xl"
               >
-                Selesai & Lihat Nilai
+                Selesai &amp; Lihat Nilai
               </button>
             </div>
           </div>
         )}
 
-        {/* MODAL KONFIRMASI SELESAI */}
         {showFinishModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5">
               <div className="text-center">
                 <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
@@ -3396,13 +3560,12 @@ export default function App() {
                 onClick={handleRestartStudent}
                 className="px-5 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm flex items-center gap-2"
               >
-                <RotateCcw className="w-4 h-4" /> Kembali & Pilih Mata Pelajaran Lain
+                <RotateCcw className="w-4 h-4" /> Kembali &amp; Pilih Mata Pelajaran Lain
               </button>
             </div>
           </div>
         </div>
 
-        {/* PEMBAHASAN LENGKAP */}
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
